@@ -6,7 +6,7 @@ from algosdk.error import AlgodHTTPError
 from algosdk.encoding import encode_address
 from tinyman.utils import wait_for_confirmation
 from tinyman.assets import Asset, AssetAmount
-from .optin import prepare_app_optin_transactions
+from .optin import prepare_app_optin_transactions,prepare_asset_optin_transactions
 from .constants import TESTNET_VALIDATOR_APP_ID, MAINNET_VALIDATOR_APP_ID
 
 logger = logging.getLogger()
@@ -51,6 +51,16 @@ class TinymanClient:
         )
         return txn_group
 
+    def prepare_asset_optin_transactions(self, asset_id, user_address=None):
+        user_address = user_address or self.user_address
+        suggested_params = self.algod.suggested_params()
+        txn_group = prepare_asset_optin_transactions(
+            asset_id=asset_id,
+            sender=user_address,
+            suggested_params=suggested_params,
+        )
+        return txn_group
+
     def fetch_excess_amounts(self, user_address=None):
         user_address = user_address or self.user_address
         account_info = self.algod.account_info(user_address)
@@ -79,11 +89,18 @@ class TinymanClient:
     def is_opted_in(self, user_address=None):
         user_address = user_address or self.user_address
         account_info = self.algod.account_info(user_address)
-        for a in account_info['apps-local-state']:
+        for a in account_info.get('apps-local-state', []):
             if a['id'] == self.validator_app_id:
                 return True
         return False
 
+    def asset_is_opted_in(self, asset_id, user_address=None):
+        user_address = user_address or self.user_address
+        account_info = self.algod.account_info(user_address)
+        for a in account_info.get('assets', []):
+            if a['asset-id']==asset_id:
+                return True
+        return False
 
 
 class TinymanTestnetClient(TinymanClient):
